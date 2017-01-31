@@ -1,0 +1,261 @@
+<!doctype html>
+<html class="no-js" lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Sign Controller Prototype using AngularJS 1.4.7 and Foundation 5.1.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/css/normalize.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/css/foundation.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/angular.ng-notify/0.8.0/ng-notify.min.css">
+    <link rel="stylesheet" href="app.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/js/vendor/modernizr.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/js/vendor/jquery.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/js/vendor/fastclick.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/js/foundation.min.js"></script>
+    <base href="/">
+</head>
+<body ng-app="signApp">
+<div class="inner-wrap" ng-controller="BrandController">
+    <header>
+        <h1 title="User configurable"
+            ng-show="brand.branding"
+            ng-bind="brand.branding"></h1>
+        <div class="row"
+             ng-show="brand.tagline">
+            <div class="columns large-8 medium-8 small-10 large-offset-2 medium-offset-2">
+                <p ng-bind="brand.tagline"></p>
+            </div>
+        </div>
+        <div>
+            <a ng-show="brand.contact"
+               class="right"
+               dropdown-toggle="#contactInfo"
+               aria-controls="contactInfo"
+               aria-expanded="false"
+            >Contact Data</a>
+        </div>
+        <div id="contactInfo" class="f-dropdown content medium" data-dropdown-content aria-hidden="true" tabindex="-1">
+            <h4>Contact Data</h4>
+            <p ng-bind="brand.contact"></p>
+        </div><!--#contactInfo dropdown-->
+        <a class="exit-off-canvas"></a>
+
+    </header>
+    <main class="text-center" ng-controller="DashboardController" ng-cloak>
+        <!--#  help window dashboard #####################-->
+        <div class="row text-left">
+            <a data-dropdown="dashboardHelp"
+               aria-controls="dashboardHelp"
+               aria-expanded="false"
+            >Dashboard Help</a>
+        </div>
+        <!-- Dashboard Help -->
+        <div id="dashboardHelp"
+             class="f-dropdown content large text-left"
+             data-dropdown-content
+             aria-hidden="true"
+             tabindex="-1">
+            <h4>Quick Edit Dashboard Help</h4>
+            <p>These are the price tier <em>{{tiers[0].tierName}}</em>&rsquo;s prices for all the commodities stored in the system.</p>
+            <ul>
+                <li>From this page each commodity&rsquo;s' {{tiers[0].tierName}} can be individually edited.
+                    The price change is previewed in the window below the price input.
+                    Previewed prices that are different from what is stored are indicated by a different background color.
+                    These changed prices will be updated and retained when Update button is clicked.</li>
+                <li>Each column header displaying the commodity name is also a button that will display the Edit Prices editing form for that commodity.</li>
+                <li>The input field is limited to keep the price within the display&rsquo;s limits.
+                    Most commonly, 0.00 - 9.99 for a 3 digit display with decimal setting of 2.</li>
+                <li>Clicking the Detail button will display the other price tier prices on this page as well.
+                    Clicking the Detail button again will toggle them off. Only displayed if more than one price tier.</li>
+                <li>Clicking the Reset button will reset the prices to state at last update and clear all unsaved changes.</li>
+                <li>Clicking the Refresh button will refresh the data from the server.</li>
+            </ul>
+            <p class="panel"
+            >Changes are retained when Update button is pressed. <em>Not reversible!</em></p>
+        </div><!--dashboardHelp-->
+        <h2>Quick Edit Dashboard</h2>
+
+        <div ng-include="'partials/time.html'"></div>
+
+        <form name="forms.dashBoard" novalidate>
+            <div class="flex-container">
+                <div class="flex-item dash" ng-repeat="(cid, commodity) in ::commodities track by cid">
+                    <a href="#"
+                       data-reveal-id={{commodity.commodityName}}
+                       class="radius button" tabindex="1"
+                       title="{{'Go to price editing form for all price tiers for commodity: ' + commodity.commodityName}}"
+                       ng-bind="::commodity.commodityName"
+                    ></a>
+                    <!-- TODO design & apply fixes for commodity.decimal = 0,1,3,4-->
+                    <input tabindex="1"
+                           type="number" min="0" max="9.99" step="0.01"
+                           ng-model="prices[cid][0].price"
+                           ng-model-options="{ updateOn: 'default blur', debounce: {'default': 500, 'blur': 0} }"
+                           ng-change="updateTierPrices(cid)"
+                           title="Direct change of price."
+                    >
+                    <!-- display if base tier or all tiers if detail selected -->
+                    <div ng-if="$first || detail"
+                         class="flex-item priceGroup"
+                         ng-repeat="(tid, tier) in ::tiers track by tid"
+                    >
+                        <span ng-bind="::tier.tierName"></span><br />
+                        <!-- display if price is set or price is 0 -->
+                        <span ng-if="prices[cid][tid].price || 0==prices[cid][tid].price"
+                              class="price" ng-class="{changed:checks[cid][tid].price!=prices[cid][tid].price}"
+                              ng-bind="prices[cid][tid].price | currency:'':2"
+                        ></span>
+                        <!-- display if price is not set and price is not 0 (means price is null)-->
+                        <!-- TODO localization of decimal -->
+                        <span ng-if="!prices[cid][tid].price && 0!=prices[cid][tid].price"
+                              class="price" ng-class="{changed:checks[cid][tid].price!=prices[cid][tid].price}"
+                        >
+                              &ndash;.&ndash;&ndash;
+                            </span>
+                    </div><!-- .priceGroup -->
+                </div><!-- .flex-item.commodity -->
+            </div><!--.flex-container-->
+        </form>
+        <h6 class="text-center" ng-bind="signPriceText"></h6>
+        <!-- display detail button if more than 1 tier-->
+        <button ng-show="1 < tiers.length"
+                class="button flex-item radius"
+                tabindex="2"
+                accesskey="1"
+                ng-click="toggleDetailView()"
+                title="Clicking the Detail button will toggle the display the other price tier prices on this page as well. Accesskey 1: Detail button"
+        >Detail</button>
+        <button class="button flex-item radius"
+                tabindex="2" accesskey="3"
+                ng-click="resetDashboardForm()"
+                title="Clicking the Reset button will reset the prices to state at last update and clear all unsaved changes. Accesskey 3: Reset button"
+        >Reset</button>
+        <button class="button flex-item radius"
+                tabindex="2" accesskey="4"
+                ng-click="submitChangedPrices()"
+                title="Changes are retained when Update button is pressed. Accesskey 4: Update button"
+        >Update</button>
+        <!-- modals .priceTiers here -->
+        <div ng-repeat="(cid, commodity) in ::commodities track by cid">
+            <div id={{commodity.commodityName}}
+                 class="reveal-modal remove-whitespace medium priceTiers"
+                 aria-labelledby={{'commodity'+cid}} aria-hidden="true" role="dialog"
+                 data-reveal>
+                <!--#  link to help window edit price_tiers #####################-->
+                <div class="modalHelpContainer">
+                    <a data-dropdown={{'price_tiers_help_'+cid}}
+                       aria-controls={{'price_tiers_help_'+cid}}
+                       aria-expanded="false">
+                        Edit Prices Form Help
+                    </a>
+                    <a class="close-reveal-modal">&#215;</a>
+                </div><!--.modalHelpContainer-->
+
+                <!--#  help window edit price_tiers #####################-->
+                <div id={{'price_tiers_help_'+cid}}
+                     class="f-dropdown content mega"
+                     data-dropdown-content
+                     aria-hidden="true"
+                     tabindex="-1">
+                    <h4>Edit Prices Form Help</h4>
+                    <ul>
+                        <li>Each price for each price tier may be edited here.</li>
+                        <li>Each commodity can be selected from the tabs along the top.</li>
+                        <li>The {{tiers[0].tierName}} is derived from the Quick Edit Dashboard but may also be edited here. A change here will also update the amounts on the Quick Edit Dashboard.</li>
+                        <li>The commodity&rsquo;s other price tiers&rsquo; prices are derived by adding the offset amount in the input field to the {{tiers[0].tierName}}.</li>
+                        <li>A negative amount in the offset input field results in a price lower than the {{tiers[0].tierName}} (A discount.)</li>
+                        <li>The offset input field amount will be limited according to the assigned displays&rsquo; capability. Most commonly, between 0.00 and 9.99 for a 3-digit display with a 2-digit decimal setting.</li>
+                        <li>The Reset button resets the form to it&rsquo;s condition just after the last Update.</li>
+                    </ul>
+                    <p class="panel">Price changes are not saved until the Update button is clicked here or back on the Quick Edit Dashboard. <em>Not reversible!</em></p>
+                    <h4>Edit Prices Form Access Keys Shortcuts</h4>
+                    <ul>
+                        <li>Accesskey 1: Update button</li>
+                        <li>Accesskey 2: Reset button</li>
+                    </ul>
+                    <p><a href="https://wikipedia.org/wiki/Access_key">How to use accesskeys for my browser.</a></p>
+                </div><!--#pricetiersHelp++-->
+                <!--priceTiers tabs-->
+                <dl class="tabs vertical" ng-repeat="tab in ::commodities">
+                    <dd ng-class="{active:tab.commodityId==commodity.commodityId}">
+                        <a href="#"
+                           data-reveal-id={{tab.commodityName}}
+                           ng-bind="::tab.commodityName"></a>
+                    </dd>
+                </dl>
+                <h1 class="text-center">Edit&nbsp;Prices&nbsp;Form</h1>
+
+                <div ng-include="'partials/time.html'"></div>
+
+                <h2 class="text-center">
+                    Commodity: {{::commodity.commodityName}}
+                </h2>
+                <form name="{{'forms.commodity'+cid}}" novalidate>
+                    <div class="flex-container">
+                        <div class="flex-item" ng-repeat="(tid, tier) in ::tiers track by tid">
+                            <div class="priceGroup">
+                                <label for={{'priceTier'+tid}} class="text-center" ng-bind="::tier.tierName"></label>
+                                <!-- display if base tier -->
+                                <input ng-if="$first"
+                                       name={{'priceTier'+tid}}
+                                       type="number" min="0" max="9.99" step="0.01"
+                                       ng-model="prices[cid][tid].price"
+                                       ng-model-options="{ updateOn: 'default blur', debounce: {'default': 500, 'blur': 0} }"
+                                       ng-change="updateTierPrices(cid)"
+                                       title="Direct change of price."
+                                >
+                                <!-- display if not base tier -->
+                                <input ng-if="!$first"
+                                       name={{"priceTier"+tid}}
+                                       type="number" step="0.01"
+                                       min="{{rndFloat(prices[cid][0].price*-1,2)}}"
+                                       max="{{rndFloat(9.99-prices[cid][0].price,2)}}"
+                                       ng-model="prices[cid][tid].offset"
+                                       ng-model-options="{ updateOn: 'default blur', debounce: {'default': 500, 'blur': 0} }"
+                                       ng-change="prices[cid][tid].price=rndFloat(prices[cid][0].price+prices[cid][tid].offset,2)"
+                                       title="{{ ::tier.tierName }} is {{ ::tiers[0].tierName }} plus this offset amount."
+                                >
+                                <!-- display if price is set or price is 0 -->
+                                <span ng-if="prices[cid][tid].price || 0==prices[cid][tid].price" class="price"
+                                      ng-class="{changed:checks[cid][tid].price!=prices[cid][tid].price}"
+                                      ng-bind="prices[cid][tid].price | currency:'':2"></span>
+                                <!-- display if price is not set or price is not 0 (means price is null display dashes)-->
+                                <span ng-if="!prices[cid][tid].price && 0!=prices[cid][tid].price" class="price"
+                                      ng-class="{changed:checks[cid][tid].price!=prices[cid][tid].price}"
+                                >&ndash;.&ndash;&ndash;</span>
+                            </div><!--.priceGroup-->
+                        </div><!--.flex-item-->
+                    </div><!--.flex-container-->
+                </form>
+                <h6 class="text-center" ng-bind="signPriceText"></h6>
+                <div class="flex-container" style="margin-top: 1em;">
+                    <button class="button price-button flex-item" tabindex="0" accesskey="1"
+                            ng-click="submitChangedPrices(cid)"
+                            title="Price changes are not saved until the Update button is clicked here or back on the Quick Edit Dashboard."
+                    >Update</button>
+                    <button class="button price-button flex-item" tabindex="0" accesskey="2"
+                            ng-click="resetPriceForm(cid)"
+                            title="The Reset button resets the form to it&rsquo;s condition just after the last Update."
+                    >Reset</button>
+                </div><!--.flex-container-->
+            </div><!--.reveal-modal.remove-whitespace-->
+        </div>
+    </main>
+    <script>
+        $(document).foundation();
+    </script>
+    <!-- angular scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.7/angular.min.js"></script>
+    <!-- angular components scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.10.0/humanize-duration.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.17.1/moment-with-locales.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/1.0.0/angular-moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/angular.ng-notify/0.8.0/ng-notify.min.js"></script>
+    <!-- signApp scripts -->
+    <script src="js/app.module.js"></script>
+    <!-- signApp controllers -->
+    <script src="js/controllers/brand.js"></script>
+    <script src="js/controllers/dashboard.js"></script>
+</body>
+</html>

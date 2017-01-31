@@ -1,0 +1,18 @@
+[
+  {
+    "tierId":1,
+    "tierName":"Cash Price"
+  },
+  {
+    "tierId":2,
+    "tierName":"Debit Price"
+  },
+  {
+    "tierId":3,
+    "tierName":"Credit Price"
+  },
+  {
+    "tierId":4,
+    "tierName":"Loyalty Price"
+  }
+]
